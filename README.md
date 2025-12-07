@@ -11,6 +11,11 @@ It works together with the companion Fabric mod "Hidder" to let server admins ch
 
 
 
+📢 Project Updates & Community Discord
 
+I'm actively working on the project, and development is progressing steadily.
+If you'd like to receive updates, follow development closely, or share feedback, you’re welcome to join the community Discord server:
 
-coming very soon~
+👉 https://discord.gg/EYJqM75tnT
+
+More updates will be posted there. Thanks for your support! 🚀
