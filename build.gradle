@@ -1,0 +1,213 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+}
+
+group = 'com.example.modseeker'
+version = '1.1'
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'papermc-repo'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
+    maven {
+        name = 'sonatype'
+        url = 'https://oss.sonatype.org/content/groups/public/'
+    }
+}
+
+dependencies {
+    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    // Gson dependency removed as we're using a simpler parsing approach
+}
+
+def targetJavaVersion = 21
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [version: version]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+// Simplified jar task to avoid duplicates and create correct file name
+jar {
+    archiveBaseName = 'modseeker'
+    archiveVersion = '1.1'
+    archiveClassifier = ''
+    destinationDirectory = file("$projectDir/build/libs")
+    
+    // Set duplicates strategy to exclude to prevent duplicate files
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    // Include compiled classes
+    from sourceSets.main.output
+    
+    // Include resources
+    from sourceSets.main.resources
+}
+
+// Task to build a minimal JAR with only the necessary classes
+task buildMinimal(type: Jar) {
+    archiveBaseName = 'modseeker'
+    archiveVersion = '1.1'
+    archiveClassifier = ''
+    destinationDirectory = file("$projectDir/test")
+    
+    // Set duplicates strategy to include
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    
+    // Include all class files we need
+    from('build/classes/java/main/com/example/modseeker') {
+        include '**/*.class'
+    }
+    
+    // Include only the main plugin.yml, not all YAML files
+    from('src/main/resources') {
+        include 'plugin.yml'
+    }
+    
+    // Include META-INF
+    from('src/main/resources') {
+        include 'META-INF/**'
+    }
+    
+    // Make sure classes are compiled before building the JAR
+    dependsOn classes
+}
+
+// Task to build semantic versioned JAR with only the necessary classes
+task buildFinal(type: Jar) {
+    archiveBaseName = 'modseeker'
+    archiveVersion = '1.1'
+    archiveClassifier = ''
+    destinationDirectory = file("$projectDir/test")
+    
+    // Set duplicates strategy to include
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    
+    // Include all class files we need
+    from('build/classes/java/main/com/example/modseeker') {
+        include '**/*.class'
+    }
+    
+    // Include only the main plugin.yml
+    from('src/main/resources') {
+        include 'plugin.yml'
+    }
+    
+    // Include META-INF
+    from('src/main/resources') {
+        include 'META-INF/**'
+    }
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.example.modseeker.ModSeekerPlugin'
+        )
+    }
+    
+    // Make sure classes are compiled before building the JAR
+    dependsOn classes
+}
+
+// Task to build Test-5 version
+task buildTest5(type: Jar) {
+    archiveBaseName = 'modseeker-v3-alpha-1-test-5'
+    archiveClassifier = ''
+    destinationDirectory = file("$projectDir/test")
+    
+    // Set duplicates strategy to include
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    
+    // Use the Test5 specific plugin.yml
+    doFirst {
+        copy {
+            from 'src/main/resources/plugin-test5.yml'
+            into 'build/resources/main'
+            rename 'plugin-test5.yml', 'plugin.yml'
+        }
+    }
+    
+    // Get the classes from the compiled output, but only include what we need
+    from('build/classes/java/main') {
+        include 'com/example/modseeker/**/*.class'
+    }
+    from('build/resources/main') {
+        include 'plugin.yml'
+    }
+    from('src/main/resources') {
+        include 'META-INF/**'
+    }
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.example.modseeker.ModSeekerPlugin'
+        )
+    }
+    
+    // Ensure resources are processed after copying plugin.yml
+    dependsOn processResources
+    mustRunAfter classes
+}
+
+// Task to build semantic versioned JAR
+task buildSemVer(type: Jar) {
+    archiveBaseName = 'modseeker'
+    archiveVersion = '1.1'
+    archiveClassifier = ''
+    destinationDirectory = file("$projectDir/test")
+    
+    // Set duplicates strategy to include
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    
+    // Use the semantic versioning plugin.yml
+    doFirst {
+        copy {
+            from 'src/main/resources/plugin-semver.yml'
+            into 'build/resources/main'
+            rename 'plugin-semver.yml', 'plugin.yml'
+        }
+    }
+    
+    // Get the classes from the compiled output, but only include what we need
+    from('build/classes/java/main') {
+        include 'com/example/modseeker/**/*.class'
+    }
+    from('build/resources/main') {
+        include 'plugin.yml'
+    }
+    from('src/main/resources') {
+        include 'META-INF/**'
+    }
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.example.modseeker.ModSeekerPlugin'
+        )
+    }
+    
+    // Ensure resources are processed after copying plugin.yml
+    dependsOn processResources
+    mustRunAfter classes
+}

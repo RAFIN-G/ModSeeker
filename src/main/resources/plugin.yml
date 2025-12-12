@@ -1,0 +1,9 @@
+name: ModSeeker
+version: 1.1
+main: com.example.modseeker.ModSeekerPlugin
+api-version: 1.21
+commands:
+  modseeker:
+    description: ModSeeker main command
+    usage: /<command> [subcommand]
+    permission: modseeker.use
