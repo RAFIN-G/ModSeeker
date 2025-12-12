@@ -37,42 +37,6 @@ public class KeyGen {
             StringBuilder cpp = new StringBuilder();
             cpp.append("// REPLACE IN hidder_vault.cpp (RSA Key Components)\n\n");
 
-            // Client Signing Key (We assume Client uses same key pair for singing or
-            // distinct?
-            // In the codebase logic, Client SINGS with Private Key, Server VERIFIES with
-            // Public Key.
-            // AND Server Encrypts with Server Public Key (Wait, logic check: usually
-            // separate pairs)
-            // But for simplicity in this project we often reused pairs or just need ONE
-            // pair for the whole system?
-            // The current code has: "CLIENT RSA Key (Signing)" and "SERVER RSA Key
-            // (Encryption)".
-            // Let's generate ONE pair that serves as the "System Key".
-            // Client needs Private Key components (to sign) and Server Public Key
-            // components (to encrypt data to server? No wait).
-            // Let's look at hidder_vault.cpp:
-            // Client Imports: B64_MODULUS, B64_PRIV_EXP... (This is a Private Key).
-            // Client Imports: SRV_B64_MODULUS, SRV_B64_EXP (This is a Public Key).
-
-            // To make it easy for users, we will generate ONE master pair.
-            // Theoretical risk: If Client has Private Key, they can decrypt Server traffic?
-            // Client USES Private Key to SIGN. Server uses Public Key to VERIFY.
-            // Client USES Server Public Key to ENCRYPT. Server uses Private Key to DECRYPT.
-            // So:
-            // Client needs: MyPrivateKey (Full) + ServerPublicKey (Modulus/Exp)
-            // Server needs: MyPrivateKey (Full) + ClientPublicKey (Modulus/Exp)
-            // If we use ONE pair for everything:
-            // Client has Full Key. Server has Full Key.
-            // If Client has Full Key, they can decrypt what they sent? Yes.
-            // Can they decrypt what OTHERS sent? Only if everyone shares the same key.
-            // In this mod, EVERY client has the SAME "Client Key" hardcoded?
-            // Yes, "B64_MODULUS" is hardcoded. So "Client Key" is a shared secret among all
-            // clients (essentially public).
-            // "Server Key" is what matters for encryption.
-            // We'll generate ONE pair to be the "Server Key".
-            // AND generate ONE pair to be the "Shared Client Key".
-            // Actually, let's generate TWO pairs to be professional.
-
             System.out.println("🔨 Generating second RSA pair for Client Identity...");
             KeyPair clientPair = kpg.generateKeyPair();
             RSAPrivateCrtKey clientPriv = (RSAPrivateCrtKey) clientPair.getPrivate();
@@ -123,12 +87,7 @@ public class KeyGen {
     }
 
     private static String toB64(BigInteger bigInt) {
-        // Remove sign byte if present (BigInteger representation) usually handled by
-        // C++ vault but cleaner here?
-        // The C++ vault has "Strip leading zero" logic. Java BigInteger.toByteArray()
-        // adds a zero byte if MSB is set.
-        // Base64 encoding that byte is fine, C++ handles it.
-        // But for neatness, let's keep it standard.
+        
         return Base64.getEncoder().encodeToString(bigInt.toByteArray());
     }
 
@@ -138,3 +97,4 @@ public class KeyGen {
         }
     }
 }
+
