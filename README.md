@@ -32,6 +32,8 @@ ModSeeker is a Paper plugin that works with the [Hidder Fabric](https://github.c
 4. Edit `config.yml`, `modblacklist.json`, or `whitelist.json` as needed  
 5. Restart the server  
 
+[![](https://github.com/gabrielvicenteYT/modrinth-icons/raw/main/Branding/Badge/badge-dark.svg)](https://modrinth.com/plugin/modseeker)
+
 ---
 
 ## ⚙ Configuration
