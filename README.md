@@ -164,8 +164,10 @@ To compile ModSeeker from the source code:
 2.  Navigate to the project directory.
 3. **🔑 Key Generation (Required)**
 Before building, you must generate secure RSA keys:
-* Go to the `Tools` folder.
+* Go to the [Tools](https://github.com/RAFIN-G/ModSeeker/tree/main/Tools) folder.
+
 *Run [GenerateKeys.bat](cci:7://file:///d:/MINECRAFT/minecraft%20project/HERE/Tools/GenerateKeys.bat:0:0-0:0).
+
 *Copy the contents of the generated `SERVER_KEY_JAVA.txt` and `SERVER_VERIFY_KEY.txt` into [src/main/java/com/example/modseeker/SecurityManager.java](cci:7://file:///d:/MINECRAFT/minecraft%20project/HERE/ModSeeker/src/main/java/com/example/modseeker/SecurityManager.java:0:0-0:0).
 * Copy `CLIENT_KEYS_CPP.txt` and use it for the Hidder client build.
 4.  Run the build command:
