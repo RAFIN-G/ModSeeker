@@ -132,7 +132,7 @@ All commands require `modseeker.use` permission.
 This is the general flow of verification when a player joins the server:
 
 1.  **Player joins the server**
-2.  Checks if the player is whitelisted $\rightarrow$ skips verification if yes
+2.  Checks if the player is whitelisted or not skips verification if player is whitelised
 3.  Initiates cryptographic handshake with Hidder
 4.  Requests the full client mod list
 5.  Verifies the payload signature and timestamp for authenticity
@@ -147,8 +147,6 @@ This is the general flow of verification when a player joins the server:
 * **RSA/AES Hybrid Encryption** for the secure modlist payload
 * **Digital Signatures** for message validation and integrity
 * **Replay Attack Prevention** using timestamps
-* Blacklist and whitelist support
-* Floodgate / Bedrock optional bypass
 
 ---
 
@@ -158,8 +156,7 @@ To compile ModSeeker from the source code:
 
 1.  Clone the repository:
     ```bash
-    git clone [Your Repository URL Here] 
-    # (Replace with the actual URL)
+    git clone   https://github.com/RAFIN-G/ModSeeker 
     ```
 2.  Navigate to the project directory.
 3. **🔑 Key Generation (Required)**
