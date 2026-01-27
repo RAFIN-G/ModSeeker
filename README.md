@@ -159,7 +159,7 @@ To compile ModSeeker from the source code:
 
 1.  Clone the repository:
     ```bash
-    git clone   https://github.com/RAFIN-G/ModSeeker 
+    git clone https://github.com/RAFIN-G/ModSeeker 
     ```
 2.  Navigate to the project directory.
 3. **🔑 Key Generation (Required)**
