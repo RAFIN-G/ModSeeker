@@ -1,6 +1,7 @@
 # ModSeeker 🔎
 
-ModSeeker is a Paper plugin that works with the [Hidder Fabric](https://github.com/RAFIN-G/Hidder) mod to verify player mods on Minecraft servers. It ensures players comply with server policies and prevents clients from bypassing rules.
+> **⚠️ Warning:** This plugin requires [Hidder Fabric](https://github.com/RAFIN-G/Hidder) Mod to work!!
+ModSeeker is a Paper plugin that works with the [Hidder Fabric](https://github.com/RAFIN-G/Hidder) mod to verify player Mods on Minecraft paper servers. It ensures players comply with server policies and prevents players from using unwanted Mods
 
 [![](https://github.com/gabrielvicenteYT/modrinth-icons/raw/main/Branding/Badge/badge-dark.svg)](https://modrinth.com/plugin/modseeker)
 
