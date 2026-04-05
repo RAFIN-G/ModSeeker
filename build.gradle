@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.example.modseeker'
-version = '1.1'
+version = '2.0'
 
 repositories {
     mavenCentral()
@@ -19,11 +19,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:26.1.1.build.+'
     // Gson dependency removed as we're using a simpler parsing approach
 }
 
-def targetJavaVersion = 21
+def targetJavaVersion = 25
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     sourceCompatibility = javaVersion
@@ -53,7 +53,7 @@ processResources {
 // Simplified jar task to avoid duplicates and create correct file name
 jar {
     archiveBaseName = 'modseeker'
-    archiveVersion = '1.1'
+    archiveVersion = '2.0'
     archiveClassifier = ''
     destinationDirectory = file("$projectDir/build/libs")
     
@@ -70,7 +70,7 @@ jar {
 // Task to build a minimal JAR with only the necessary classes
 task buildMinimal(type: Jar) {
     archiveBaseName = 'modseeker'
-    archiveVersion = '1.1'
+    archiveVersion = '1.2'
     archiveClassifier = ''
     destinationDirectory = file("$projectDir/test")
     
@@ -99,7 +99,7 @@ task buildMinimal(type: Jar) {
 // Task to build semantic versioned JAR with only the necessary classes
 task buildFinal(type: Jar) {
     archiveBaseName = 'modseeker'
-    archiveVersion = '1.1'
+    archiveVersion = '1.2'
     archiveClassifier = ''
     destinationDirectory = file("$projectDir/test")
     
@@ -174,7 +174,7 @@ task buildTest5(type: Jar) {
 // Task to build semantic versioned JAR
 task buildSemVer(type: Jar) {
     archiveBaseName = 'modseeker'
-    archiveVersion = '1.1'
+    archiveVersion = '1.2'
     archiveClassifier = ''
     destinationDirectory = file("$projectDir/test")
     

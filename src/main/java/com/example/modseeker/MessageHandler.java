@@ -52,6 +52,8 @@ public class MessageHandler {
 
             if (messageJson.contains("\"messageType\":\"ANNOUNCE_PRESENCE\"")) {
                 plugin.handleAnnouncePresence(player, messageJson);
+            } else if (messageJson.contains("\"messageType\":\"CHALLENGE_RESPONSE\"")) {
+                plugin.getHandshakeManager().handleChallengeResponse(player, messageJson);
             } else if (messageJson.contains("\"messageType\":\"RESPONSE_MODLIST\"")) {
                 plugin.handleModListResponse(player, messageJson);
             } else if (messageJson.contains("\"messageType\":\"RESPONSE_MODLIST_ENCRYPTED\"")) {
@@ -128,8 +130,20 @@ public class MessageHandler {
             checkData.attemptCount++;
             checkData.lastRequestTime = System.currentTimeMillis();
 
+            // Generate Layer 3 nonce for integrity binding
+            if (checkData.layer3Nonce == null) {
+                byte[] nonceBytes = new byte[16];
+                new java.security.SecureRandom().nextBytes(nonceBytes);
+                StringBuilder sb = new StringBuilder();
+                for (byte b : nonceBytes) {
+                    sb.append(String.format("%02x", b));
+                }
+                checkData.layer3Nonce = sb.toString();
+            }
+
             checkData.lastRequestTime = System.currentTimeMillis();
-            String requestJson = "{\"messageType\":\"REQUEST_MODLIST\",\"checkId\":\"" + checkData.checkId + "\"}";
+            String requestJson = "{\"messageType\":\"REQUEST_MODLIST\",\"checkId\":\"" + checkData.checkId
+                    + "\",\"nonce\":\"" + checkData.layer3Nonce + "\"}";
             sendPluginMessage(player, requestJson);
             startModCheckTimeoutTimer(player, checkData);
 
@@ -142,12 +156,8 @@ public class MessageHandler {
 
     public void sendPluginMessage(Player player, String messageJson) {
         try {
-            // Convert the JSON message to bytes directly
             byte[] messageData = messageJson.getBytes("UTF-8");
-
-            // Send the message using the proper channel
             player.sendPluginMessage(plugin, PLUGIN_CHANNEL, messageData);
-
         } catch (Exception e) {
             plugin.logInfo("❌ FAILED TO SEND PLUGIN MESSAGE to " + player.getName() + ": " + e.getMessage());
             throw new RuntimeException("Failed to send plugin message", e);

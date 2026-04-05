@@ -59,6 +59,8 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
     private HandshakeManager handshakeManager;
     private VerificationService verificationService;
     private SecurityManager securityManager;
+    private DiscordWebhook discordWebhook;
+    private LauncherListManager launcherListManager;
 
     // Simple logging prefix
     private final String logPrefix = "[ModSeeker] ";
@@ -88,16 +90,24 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
 
         // Initialize services
         securityManager = new SecurityManager(this);
+        securityManager.setConfigManager(configManager);
+        discordWebhook = new DiscordWebhook(configManager);
+        launcherListManager = new LauncherListManager(getDataFolder());
+        LauncherVerifier launcherVerifier = new LauncherVerifier(this, launcherListManager, configManager);
         verificationService = new VerificationService(this, playerDataManager, messageHandler, modListParser,
                 configManager, blacklistManager, securityManager);
         handshakeManager = new HandshakeManager(this, playerDataManager, messageHandler, modListParser, configManager,
-                verificationService);
-
+                verificationService, launcherVerifier, securityManager);
         // Initialize command handler
-        commandHandler = new CommandHandler(this, blacklistManager, configManager, whitelistManager);
+        commandHandler = new CommandHandler(this, blacklistManager, configManager, whitelistManager, launcherListManager);
 
-        // Register events
         getServer().getPluginManager().registerEvents(this, this);
+        try {
+            getServer().getPluginManager().registerEvents(securityManager, this);
+        } catch (NoClassDefFoundError e) {
+            logInfo("⚠️ Paper-specific features disabled (running on Spigot?)");
+            logInfo("   ↳ Core freeze events will still work via manual registration");
+        }
         logInfo("📂 Blacklist loaded | ✅ Event listeners active");
 
         // Register plugin messaging channel
@@ -142,6 +152,11 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
                 Bukkit.getScheduler().cancelTask(seekData.timeoutTaskId);
             }
         }
+
+        // Shutdown Discord webhook executor
+        if (discordWebhook != null) {
+            discordWebhook.shutdown();
+        }
         logInfo("🧹 Cleanup complete — all sessions cleared");
         logInfo("✅ Plugin messaging channels closed");
     }
@@ -151,6 +166,10 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
         String playerName = player.getName();
+
+        // Note: ModVerification toggle only gates Layer 3 (modlist check).
+        // Layer 1-2 are gated by launcherVerification toggle.
+        // Both checks happen downstream, not here.
 
         // Check if player is whitelisted
         if (whitelistManager.isWhitelisted(playerId)) {
@@ -193,6 +212,9 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
             }
         }
 
+        // Freeze player during verification (v2.0 security)
+        securityManager.freezePlayer(playerId);
+
         // Start handshake process
         handshakeManager.startHandshake(player);
     }
@@ -228,6 +250,9 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         if (seekData != null && seekData.timeoutTaskId != -1) {
             Bukkit.getScheduler().cancelTask(seekData.timeoutTaskId);
         }
+
+        // Unfreeze player on quit (v2.0 security cleanup)
+        securityManager.unfreezePlayer(playerId);
     }
 
     // Method to handle announce presence message - Delegated to HandshakeManager
@@ -309,6 +334,10 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
 
     public Map<UUID, PlayerDataManager.PlayerModCheckData> getSeekRequests() {
         return seekRequests;
+    }
+
+    public DiscordWebhook getDiscordWebhook() {
+        return discordWebhook;
     }
 
     public int getTIMEOUT_SECONDS() {

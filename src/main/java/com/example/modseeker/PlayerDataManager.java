@@ -51,10 +51,13 @@ public class PlayerDataManager {
         public String presenceMessage;
         public String modVersion;
 
-        // Fields for retry and timeout handling
         public int retryCount = 0;
-        public int timeoutTaskId = -1; // For sendHandshakeRequest timeout
-        public int presenceTimeoutTaskId = -1; // For startHandshakeTimeoutTimer timeout
+        public int timeoutTaskId = -1;
+        public int presenceTimeoutTaskId = -1;
+
+        public String challengeNonce;
+        public long challengeTimestamp;
+        public boolean challengePassed = false;
 
         public HandshakeData(UUID playerId, String playerName) {
             this.playerId = playerId;
@@ -87,6 +90,9 @@ public class PlayerDataManager {
         public boolean verificationComplete = false;
         public String verificationResult;
         public int timeoutTaskId = -1;
+
+        // Layer 3 integrity nonce (binds modlist to this session)
+        public String layer3Nonce;
 
         public PlayerModCheckData(UUID playerId, String playerName) {
             this.playerId = playerId;

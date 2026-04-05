@@ -1,0 +1,28 @@
+# Build output
+build/
+bin/
+out/
+
+# Gradle
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated key files (contain secrets — never commit)
+Tools/SERVER_KEY_JAVA.txt
+Tools/SERVER_VERIFY_KEY.txt
+Tools/CLIENT_KEYS_CPP.txt
+Tools/HMAC_SECRET_JAVA.txt
+Tools/HMAC_SECRET_CPP.txt
+Tools/KeyGen.class

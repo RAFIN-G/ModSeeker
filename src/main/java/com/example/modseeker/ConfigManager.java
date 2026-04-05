@@ -48,6 +48,22 @@ public class ConfigManager {
     private boolean HIGHLIGHT_BLACKLISTED_MODS = true;
     private boolean allowFloodgate = true;
 
+    // Global verification toggle
+    private boolean modVerificationEnabled = true;
+
+    // Discord webhook config
+    private boolean discordEnabled = false;
+    private String discordWebhookUrl = "";
+    private boolean discordPlayerJoin = true;
+    private boolean discordModListReceived = true;
+    private boolean discordBlacklistViolation = true;
+    private boolean discordVerificationFailed = true;
+
+    // Launcher verification config (v2.0)
+    private boolean launcherVerificationEnabled = false;
+    private String launcherKickMessage = "Please use an approved launcher to join this server";
+    private boolean allowUnknownClients = false;
+
     public ConfigManager(File dataFolder) {
         this.configFile = new File(dataFolder, "config.yml");
         loadConfig();
@@ -109,6 +125,23 @@ public class ConfigManager {
 
             // Load floodgate settings
             allowFloodgate = config.getBoolean("allowFloodgate", true);
+
+            // Load global verification toggle
+            modVerificationEnabled = config.getBoolean("ModVerification", true);
+
+            // Load Discord webhook settings
+            discordEnabled = config.getBoolean("discord.enabled", false);
+            discordWebhookUrl = config.getString("discord.webhookUrl", "");
+            discordPlayerJoin = config.getBoolean("discord.events.playerJoin", true);
+            discordModListReceived = config.getBoolean("discord.events.modListReceived", true);
+            discordBlacklistViolation = config.getBoolean("discord.events.blacklistViolation", true);
+            discordVerificationFailed = config.getBoolean("discord.events.verificationFailed", true);
+
+            // Load launcher verification settings (v2.0)
+            launcherVerificationEnabled = config.getBoolean("launcherVerification.enabled", false);
+            launcherKickMessage = config.getString("launcherVerification.kickMessage",
+                    "Please use an approved launcher to join this server");
+            allowUnknownClients = config.getBoolean("launcherVerification.allowUnknownClients", false);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -201,7 +234,31 @@ public class ConfigManager {
                     "# If set to true, Bedrock players (Floodgate) bypass all mod checks\n" +
                     "# Recommended: true for Geyser/Floodgate servers\n" +
                     "# ---------------------------------------------------------------\n" +
-                    "allowFloodgate: true\n";
+                    "allowFloodgate: true\n" +
+                    "\n" +
+                    "# ==================================================================\n" +
+                    "# Discord Webhook Integration\n" +
+                    "# ==================================================================\n" +
+                    "discord:\n" +
+                    "  enabled: false\n" +
+                    "  webhookUrl: \"https://discord.com/api/webhooks/YOUR_WEBHOOK_URL_HERE\"\n" +
+                    "  events:\n" +
+                    "    playerJoin: true\n" +
+                    "    modListReceived: true\n" +
+                    "    blacklistViolation: true\n" +
+                    "    verificationFailed: true\n" +
+                    "\n" +
+                    "# Toggle mod list verification (Layer 3)\n" +
+                    "# false = disables mod checking, Layer 1-2 still work independently\n" +
+                    "ModVerification: true\n" +
+                    "\n" +
+                    "# ==================================================================\n" +
+                    "# Launcher/Client Verification (v2.0)\n" +
+                    "# ==================================================================\n" +
+                    "launcherVerification:\n" +
+                    "  enabled: false                # Require approved client/launcher to join\n" +
+                    "  kickMessage: \"Please use an approved launcher to join this server\"  # Message shown on kick\n" +
+                    "  allowUnknownClients: false     # Allow unrecognized clients/launchers (not recommended)\n";
 
             Files.write(configFile.toPath(), defaultContent.getBytes());
         } catch (IOException e) {
@@ -282,5 +339,48 @@ public class ConfigManager {
 
     public boolean isAllowFloodgate() {
         return allowFloodgate;
+    }
+
+    // Global verification toggle
+    public boolean isModVerificationEnabled() {
+        return modVerificationEnabled;
+    }
+
+    // Discord webhook getters
+    public boolean isDiscordEnabled() {
+        return discordEnabled;
+    }
+
+    public String getDiscordWebhookUrl() {
+        return discordWebhookUrl;
+    }
+
+    public boolean isDiscordPlayerJoin() {
+        return discordPlayerJoin;
+    }
+
+    public boolean isDiscordModListReceived() {
+        return discordModListReceived;
+    }
+
+    public boolean isDiscordBlacklistViolation() {
+        return discordBlacklistViolation;
+    }
+
+    public boolean isDiscordVerificationFailed() {
+        return discordVerificationFailed;
+    }
+
+    // Launcher verification getters (v2.0)
+    public boolean isLauncherVerificationEnabled() {
+        return launcherVerificationEnabled;
+    }
+
+    public String getLauncherKickMessage() {
+        return launcherKickMessage;
+    }
+
+    public boolean isAllowUnknownClients() {
+        return allowUnknownClients;
     }
 }

@@ -163,6 +163,10 @@ public class VerificationService {
             for (String mod : blacklistedDetected) {
                 plugin.logInfo("   ↳ " + mod);
             }
+
+            // Discord webhook - blacklist violation
+            plugin.getDiscordWebhook().sendBlacklistViolation(playerName, blacklistedDetected);
+
             String kickMsg = configManager.getKickMessages().getOrDefault("blacklistedMods",
                     "Blacklisted mods detected");
             String modsList = String.join(", ", blacklistedDetected);
@@ -174,6 +178,10 @@ public class VerificationService {
         }
 
         if (configManager.isEnableModCountThreshold() && filteredModList.size() > configManager.getMaxModCount()) {
+            // Discord webhook - verification failed (too many mods)
+            plugin.getDiscordWebhook().sendVerificationFailed(playerName,
+                    "Too many mods (" + filteredModList.size() + "/" + configManager.getMaxModCount() + ")");
+
             String kickMessage = configManager.getKickMessages().getOrDefault("modCountExceeded", "Too many mods");
             player.kickPlayer(ChatColor.RED + kickMessage);
             return;
@@ -181,6 +189,9 @@ public class VerificationService {
 
         plugin.logInfo("🎉 Player verification complete — access granted");
         playerDataManager.addApprovedPlayer(playerId);
+        securityManager.unfreezePlayer(playerId);
+
+        plugin.getDiscordWebhook().sendModListReceived(playerName, filteredModList, true);
 
         if (configManager.isEnablePlayerNotifications()) {
             player.sendMessage(ChatColor.GREEN + configManager.getWelcomeMessage());
@@ -202,16 +213,27 @@ public class VerificationService {
             }
         }
 
+        // Console logging - respects oneModPerLine config
         plugin.logInfo("📋 Mod list received: " + filteredModList.size() + " mods verified");
         if (!filteredModList.isEmpty()) {
-            plugin.logInfo("   ↳ " + String.join(",", filteredModList));
+            if (configManager.isONE_MOD_PER_LINE()) {
+                // One mod per line
+                for (String mod : filteredModList) {
+                    plugin.logInfo("   ↳ " + mod);
+                }
+            } else {
+                // All mods on one line
+                plugin.logInfo("   ↳ " + String.join(", ", filteredModList));
+            }
         }
 
-        String modString = String.join(",", filteredModList);
+        // Admin chat message - format: "Mod count: X | Mods - mod1, mod2, mod3..."
+        String modString = String.join(", ", filteredModList);
+        String adminMessage = ChatColor.GREEN + "Mod count: " + filteredModList.size() + " | Mods - " + modString;
+
         for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
             if (onlinePlayer.isOp()) {
-                onlinePlayer
-                        .sendMessage(ChatColor.GREEN + "amount of mod : " + filteredModList.size() + " | " + modString);
+                onlinePlayer.sendMessage(adminMessage);
             }
         }
     }

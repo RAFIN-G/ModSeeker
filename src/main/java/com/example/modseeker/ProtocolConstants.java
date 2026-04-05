@@ -36,6 +36,11 @@ public final class ProtocolConstants {
     public static final String MSG_MODLIST_REQUEST = "MODLIST_REQUEST";
     public static final String MSG_ACKNOWLEDGE_PRESENCE = "ACKNOWLEDGE_PRESENCE";
 
+    // v2.0 Message Types - Layer 1 HMAC Challenge
+    public static final String MSG_CHALLENGE = "CHALLENGE";
+    public static final String MSG_CHALLENGE_RESPONSE = "CHALLENGE_RESPONSE";
+    public static final String MSG_LAUNCHER_INFO = "LAUNCHER_INFO";
+
     // JSON Keys
     public static final String KEY_MESSAGE_TYPE = "messageType";
     public static final String KEY_SERVER_ID = "serverId";
@@ -43,9 +48,16 @@ public final class ProtocolConstants {
     public static final String KEY_STATUS = "status";
     public static final String KEY_MOD_ID = "modId";
 
+    // v2.0 JSON Keys
+    public static final String KEY_HMAC = "hmac";
+    public static final String KEY_TIMESTAMP = "timestamp";
+    public static final String KEY_LAUNCHER_ID = "launcherId";
+    public static final String KEY_LAUNCHER_NAME = "launcherName";
+    public static final String KEY_SIGNATURE = "signature";
+
     // Status Values
     public static final String STATUS_READY = "ready";
 
     // Version
-    public static final String PLUGIN_VERSION = "1.1";
+    public static final String PLUGIN_VERSION = "2.0";
 }

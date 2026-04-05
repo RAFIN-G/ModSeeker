@@ -34,13 +34,15 @@ public class CommandHandler implements TabExecutor {
     private final BlacklistManager blacklistManager;
     private final ConfigManager configManager;
     private final WhitelistManager whitelistManager;
+    private final LauncherListManager launcherListManager;
 
     public CommandHandler(ModSeekerPlugin plugin, BlacklistManager blacklistManager, ConfigManager configManager,
-            WhitelistManager whitelistManager) {
+            WhitelistManager whitelistManager, LauncherListManager launcherListManager) {
         this.plugin = plugin;
         this.blacklistManager = blacklistManager;
         this.configManager = configManager;
         this.whitelistManager = whitelistManager;
+        this.launcherListManager = launcherListManager;
     }
 
     @Override
@@ -64,11 +66,11 @@ public class CommandHandler implements TabExecutor {
                     configManager.loadConfig();
                     blacklistManager.loadBlacklist();
                     whitelistManager.loadWhitelist();
+                    launcherListManager.reload();
                     sender.sendMessage(ChatColor.GREEN + "ModSeeker configuration and lists reloaded successfully.");
                     return true;
                 case "status":
-                    sender.sendMessage(ChatColor.RED + "Status command not implemented yet.");
-                    return true;
+                    return handleStatusCommand(sender);
                 default:
                     sender.sendMessage(ChatColor.RED
                             + "Unknown subcommand. Usage: /modseeker <seek|modblacklist|whitelist|reload|status>");
@@ -220,6 +222,58 @@ public class CommandHandler implements TabExecutor {
         } else {
             plugin.logInfo("⚠️ " + playerName + " was not in the whitelist");
         }
+    }
+
+    private boolean handleStatusCommand(CommandSender sender) {
+        PlayerDataManager pdm = plugin.getPlayerDataManager();
+
+        // Config toggles (real-time from loaded config)
+        boolean modVerif = configManager.isModVerificationEnabled();
+        boolean launcherVerif = configManager.isLauncherVerificationEnabled();
+        boolean allowUnknown = configManager.isAllowUnknownClients();
+        boolean allowFloodgate = configManager.isAllowFloodgate();
+
+        // List counts (real-time from loaded data)
+        int whitelistCount = whitelistManager.getWhitelistedNames().size();
+        int blacklistCount = blacklistManager.getBlacklistedMods().size();
+        int enabledLaunchers = launcherListManager.getEnabledLaunchers().size();
+        int totalLaunchers = launcherListManager.getLaunchers().size();
+
+        // Live player stats
+        int onlinePlayers = Bukkit.getOnlinePlayers().size();
+        int verifiedCount = 0;
+        int inHandshake = pdm.getPlayerHandshakes().size();
+
+        // Count approved players who are actually online
+        for (java.util.UUID uid : pdm.getApprovedPlayers()) {
+            if (Bukkit.getPlayer(uid) != null) {
+                verifiedCount++;
+            }
+        }
+
+        // Format toggle display
+        String modVerifStr = modVerif ? (ChatColor.GREEN + "ON") : (ChatColor.RED + "OFF");
+        String launcherVerifStr = launcherVerif ? (ChatColor.GREEN + "ON") : (ChatColor.RED + "OFF");
+        String allowUnknownStr = allowUnknown ? (ChatColor.GREEN + "true") : (ChatColor.RED + "false");
+        String allowFloodStr = allowFloodgate ? (ChatColor.GREEN + "true") : (ChatColor.RED + "false");
+
+        // Send status
+        sender.sendMessage(ChatColor.GOLD + "═══════ ModSeeker 2.0 Status ═══════");
+        sender.sendMessage(ChatColor.GRAY + "⚙ ModVerification: " + modVerifStr);
+        sender.sendMessage(ChatColor.GRAY + "⚙ LauncherVerification: " + launcherVerifStr);
+        sender.sendMessage(ChatColor.GRAY + "⚙ AllowUnknownClients: " + allowUnknownStr);
+        sender.sendMessage(ChatColor.GRAY + "⚙ AllowFloodgate: " + allowFloodStr);
+        sender.sendMessage(ChatColor.DARK_GRAY + "──────────────────────────────────");
+        sender.sendMessage(ChatColor.GRAY + "📋 Whitelisted Players: " + ChatColor.WHITE + whitelistCount);
+        sender.sendMessage(ChatColor.GRAY + "📋 Blacklisted Mods: " + ChatColor.WHITE + blacklistCount);
+        sender.sendMessage(ChatColor.GRAY + "📋 Enabled Launchers: " + ChatColor.WHITE + enabledLaunchers + "/" + totalLaunchers);
+        sender.sendMessage(ChatColor.DARK_GRAY + "──────────────────────────────────");
+        sender.sendMessage(ChatColor.GRAY + "👥 Online Players: " + ChatColor.WHITE + onlinePlayers);
+        sender.sendMessage(ChatColor.GREEN + "✅ Verified: " + ChatColor.WHITE + verifiedCount);
+        sender.sendMessage(ChatColor.AQUA + "🔄 In Handshake: " + ChatColor.WHITE + inHandshake);
+        sender.sendMessage(ChatColor.GOLD + "═══════════════════════════════════");
+
+        return true;
     }
 
     @Override
