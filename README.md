@@ -1,8 +1,8 @@
 # ModSeeker 🔍
 
-> **⚠️Note:** This plugin requires the [Hidder](https://github.com/RAFIN-G/ModSeeker) Fabric mod installed on all clients.
+> **⚠️Note:** This plugin requires the [Hidder](https://github.com/RAFIN-G/Hidder) Fabric mod installed on all clients.
 
-ModSeeker is a Paper plugin that detects player mods and enforces launcher restrictions on your server. Paired with the <a href="https://github.com/RAFIN-G/ModSeeker">Hidder</a> Fabric mod, it sees what mods players have installed, what launcher they're using, and blocks anything you don't allow — all verified through encrypted, cryptographically signed communication that can't be spoofed.
+ModSeeker is a Paper plugin that detects player mods and enforces launcher restrictions on your server. Paired with the <a href="https://github.com/RAFIN-G/Hidder">Hidder</a> Fabric mod, it sees what mods players have installed, what launcher they're using, and blocks anything you don't allow — all verified through encrypted, cryptographically signed communication that can't be spoofed.
 
 <table>
 <tr>
@@ -24,7 +24,7 @@ ModSeeker is a Paper plugin that detects player mods and enforces launcher restr
 
 ## Features
 
-- **Mod Detection** — Detects all client-side mods, resource packs, and shaders via the [Hidder](https://github.com/RAFIN-G/ModSeeker) companion mod
+- **Mod Detection** — Detects all client-side mods, resource packs, and shaders via the [Hidder](https://modrinth.com/mod/hidder) companion mod
 - **Launcher Detection & Enforcement** — Identifies the player's launcher using native OS-level inspection and enforces a configurable whitelist
 - **3-Layer Verification** — Independent security layers that must all pass before a player is admitted
 - **Encrypted Communication** — All data is encrypted end-to-end and integrity-verified
@@ -48,7 +48,7 @@ ModSeeker's Paper plugin is forward-compatible — a single JAR works across all
 
 - PaperMC **1.21.4** or higher (including **26.1**)
 - Java **21+** (Java **25+** for Minecraft 26.1)
-- [Hidder](https://github.com/RAFIN-G/Hidder) Fabric mod installed on clients
+- [Hidder](https://modrinth.com/mod/hidder) Fabric mod installed on clients
 
 ---
 
