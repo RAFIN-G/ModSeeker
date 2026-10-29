@@ -1,9 +1,50 @@
+# SPDX-FileCopyrightText: 2026 ModSeeker
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
 name: ModSeeker
-version: 2.0
+version: ${version}
 main: com.example.modseeker.ModSeekerPlugin
-api-version: '26.1'
+api-version: '${paperApiFamily}'
+softdepend: [floodgate]
 commands:
   modseeker:
     description: ModSeeker main command
     usage: /<command> [subcommand]
-    permission: modseeker.use
+permissions:
+  modseeker.use:
+    description: View ModSeeker status
+    default: op
+    children:
+      modseeker.command.status: true
+  modseeker.admin:
+    description: Access every ModSeeker command
+    default: op
+    children:
+      modseeker.use: true
+      modseeker.command.seek: true
+      modseeker.command.modallowlist: true
+      modseeker.command.modblacklist: true
+      modseeker.command.whitelist: true
+      modseeker.command.gui: true
+      modseeker.command.reload: true
+  modseeker.command.seek:
+    description: Inspect a player's cached mod list
+    default: op
+  modseeker.command.modallowlist:
+    description: Manage the hash allowlist
+    default: op
+  modseeker.command.modblacklist:
+    description: Manage the mod ID blacklist
+    default: op
+  modseeker.command.whitelist:
+    description: Manage player verification bypasses
+    default: op
+  modseeker.command.gui:
+    description: Start the console-only ModSeeker GUI
+    default: op
+  modseeker.command.reload:
+    description: Reload ModSeeker configuration and data
+    default: op
+  modseeker.command.status:
+    description: View ModSeeker status
+    default: op

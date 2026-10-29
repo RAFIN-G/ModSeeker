@@ -1,381 +1,144 @@
-# ModSeeker 🔍
+<p align="center">
+  <img src="docs/assets/modseeker-banner.svg" alt="ModSeeker — Your server, your policy. Paper plugin." width="100%">
+</p>
 
-> **⚠️Note:** This plugin requires the [Hidder](https://github.com/RAFIN-G/Hidder) Fabric mod installed on all clients.
+<p align="center">
+  <a href="https://modrinth.com/plugin/modseeker"><strong>Modrinth</strong></a> ·
+  <a href="https://github.com/RAFIN-G/ModSeeker/releases"><strong>GitHub releases</strong></a> ·
+  <a href="#compatibility">Compatibility</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#building-from-source">Build from source</a>
+</p>
 
-ModSeeker is a Paper plugin that detects player mods and enforces launcher restrictions on your server. Paired with the <a href="https://github.com/RAFIN-G/Hidder">Hidder</a> Fabric mod, it sees what mods players have installed, what launcher they're using, and blocks anything you don't allow — all verified through encrypted, cryptographically signed communication that can't be spoofed.
+ModSeeker is a Paper plugin for checking players' mods and launchers. It works with **Hidder** to block unwanted mods, check approved mod files, and apply optional launcher restrictions.
 
 <table>
-<tr>
-<td align="center" width="50%">
-<h3>🔍 Mod Detection</h3>
-<p>See every mod, resource pack, and shader a player has installed — in real time</p>
-</td>
-<td align="center" width="50%">
-<h3>🛡️ Launcher Enforcement</h3>
-<p>Know exactly which launcher each player is using and block the ones you don't trust</p>
-</td>
-</tr>
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <img src="docs/assets/mod-stack.svg" alt="" width="48" height="48">
+      <h3>Mod detection</h3>
+      <p>Block specific mods by ID, or allow only approved mod files. Checks include mods declared inside other mod JARs.</p>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <img src="docs/assets/client-detection.svg" alt="" width="48" height="48">
+      <h3>Client &amp; launcher detection</h3>
+      <p>Choose which detected launchers can join, and whether to accept unknown launchers.</p>
+    </td>
+  </tr>
 </table>
 
-
-[![](https://github.com/gabrielvicenteYT/modrinth-icons/raw/main/Branding/Badge/badge-dark.svg)](https://modrinth.com/plugin/modseeker)
-
----
+<table>
+  <tr>
+    <td align="center" width="96" style="border: 1px solid #3d444d;">
+      <a href="https://modrinth.com/mod/hidder"><img src="docs/assets/hidder.svg" alt="Hidder" width="64" height="64"></a>
+    </td>
+    <td style="border: 1px solid #3d444d;">
+      <h3>Hidder is required</h3>
+      <p>Java players need the Hidder build for their Minecraft version, together with Fabric Loader and Fabric API. Hidder supports <strong>Windows x64</strong>.</p>
+      <p><a href="https://modrinth.com/mod/hidder"><strong>Get Hidder on Modrinth →</strong></a> · <a href="https://github.com/RAFIN-G/Hidder">Hidder source</a></p>
+    </td>
+  </tr>
+</table>
 
 ## Features
 
-- **Mod Detection** — Detects all client-side mods, resource packs, and shaders via the [Hidder](https://modrinth.com/mod/hidder) companion mod
-- **Launcher Detection & Enforcement** — Identifies the player's launcher using native OS-level inspection and enforces a configurable whitelist
-- **3-Layer Verification** — Independent security layers that must all pass before a player is admitted
-- **Encrypted Communication** — All data is encrypted end-to-end and integrity-verified
-- **Player Whitelist** — Trusted players bypass verification entirely
-- **Discord Webhooks** — Real-time notifications for joins, mod lists, blacklist violations, and verification failures
-- **Floodgate Support** — Optionally bypass verification for Bedrock players
-- **Admin Dashboard** — `/modseeker status` for live monitoring of verification statistics
+| Feature | Description |
+| --- | --- |
+| **Mod list viewing** | Inspect a player's reported mods. |
+| **Mod blacklist** | Block unwanted mods by ID. |
+| **Hash allowlist** | Approve specific mod files in advanced mode. |
+| **Launcher restrictions** | Choose which detected launchers can join. |
+| **Web panel** | Manage your blacklist or allowlist in a browser. |
+| **Discord alerts** | Get updates on joins, mod reports, violations and verification failures. |
+| **Player whitelist** | Let selected players bypass verification. |
+| **Floodgate support** | Optionally bypass verification for Bedrock players identified by Floodgate. |
 
-## Version Compatibility
+## In action
 
-| Minecraft Version | Paper | Java | Status |
-|-------------------|-------|------|--------|
-| 26.1 / 26.1.1 | Paper 26.1+ | Java 25+ | ✅ Latest |
-| 1.21.4 – 1.21.11 | Paper 1.21+ | Java 21+ | ✅ Supported |
+Block a mod in the web panel and enforce the rule when the player reconnects.
 
-ModSeeker's Paper plugin is forward-compatible — a single JAR works across all supported versions within the same API generation.
+[![ModSeeker showing a player mod report, a GUI blacklist action and rejection on reconnect](docs/assets/mod-policy-demo.gif)](docs/assets/mod-policy-demo.gif)
 
----
+## Compatibility
 
-## Requirements
+| Paper server family | ModSeeker build |
+| --- | --- |
+| **1.21.x** | Java 21 |
+| **26.x** | Java 25 |
 
-- PaperMC **1.21.4** or higher (including **26.1**)
-- Java **21+** (Java **25+** for Minecraft 26.1)
-- [Hidder](https://modrinth.com/mod/hidder) Fabric mod installed on clients
+## Getting started
 
----
+1. Put the appropriate ModSeeker JAR in your Paper server's `plugins/` directory.
+2. Have verified Java players install the matching **Hidder**, **Fabric Loader** and **Fabric API** versions.
+3. Start the server to generate ModSeeker's configuration and data files.
+4. Choose your mod policy in `plugins/ModSeeker/config.yml`. Mod-ID verification is enabled by default; launcher verification is optional.
+5. Use `/modseeker reload` after configuration changes. To open the browser panel, run `modseeker gui` in the **server console** and follow the printed link.
 
-## Installation
+All ModSeeker commands require operator permissions by default. To give a trusted staff member access, grant `modseeker.admin` or individual `modseeker.command.<subcommand>` permissions. The GUI command is console-only.
 
-1. Download the latest `modseeker.jar` from [Modrinth](https://modrinth.com/plugin/modseeker) or [Releases](https://github.com/RAFIN-G/ModSeeker/releases)
-2. Place it in your server's `plugins/` folder
-3. Start the server — configuration files are generated automatically
-4. Edit `config.yml`, `modblacklist.json`, or `whitelist.json` as needed
-5. Run `/modseeker reload` to apply changes
+Mod lists are logged to the server console by default. Set `showModList: false` to turn this off. Admins can also inspect a player's cached list with `/modseeker seek mod <player>`.
 
----
+<details>
+<summary>Browser panel access</summary>
 
-## Security Architecture
+By default the panel is local to the server. Its two settings are `gui.port` and `gui.externalUrl`.
 
-ModSeeker uses three independent verification layers. Each layer operates autonomously — disabling one does not weaken the others.
+- **Local:** leave `externalUrl` blank; `port: 0` selects an available local port.
+- **Direct LAN/public access:** use a separate fixed port and an address such as `http://YOUR_REAL_PUBLIC_IP:PORT`. Allow that TCP port through your firewall and container/router mappings.
+- **HTTPS domain:** set an address such as `https://panel.example.com` and use a same-host HTTPS reverse proxy to the panel's fixed local port.
 
-```
-Player Joins
-    |
-    v
-[ Layer 1: Cryptographic Handshake ]  -- Is this the authentic Hidder mod?
-    |
-    v
-[ Layer 2: Launcher Detection ]       -- Is the player using an approved launcher?
-    |
-    v
-[ Layer 3: Mod Verification ]         -- Does the mod list contain banned mods?
-    |
-    v
-Player Approved ✅
-```
+The panel uses a different port from Minecraft. A public HTTP connection is unencrypted; use HTTPS for protected remote access. Keep the expiring access link private.
 
-### Layer 1 — Identity Verification
+</details>
 
-The server issues a unique cryptographic challenge for every connection. The client must produce a valid signed response using a native security module. Challenges are one-time-use with strict time limits, preventing replay attacks and spoofing.
+## Building from source
 
-### Layer 2 — Launcher Detection
+<details>
+<summary>Build ModSeeker and Hidder together</summary>
 
-The companion mod detects which launcher started the game using native OS-level inspection. The server validates the result against a configurable whitelist. Supports 15 launchers including Prism Launcher, MultiMC, CurseForge, Modrinth App, ATLauncher, GDLauncher, Technic, FTB App, Lunar Client, Badlion Client, Feather Client, LabyMod, TLauncher, SKLauncher, and Pojav Launcher.
+`StartCustomBuild.ps1` builds **both the ModSeeker server plugin and the Hidder client mod**, including Hidder's native DLL. You need both source repositories, even if you started from only one project's page.
 
-### Layer 3 — Mod Verification
+Build on **Windows x64** with **JDK 25** and the following native dependencies:
 
-The client collects its installed mods, resource packs, and shader packs directly from the Fabric runtime registry. The data is encrypted end-to-end using hybrid RSA/AES and includes a session-bound integrity signature. The server decrypts and verifies the signature before inspecting the mod list.
+| Software | What to install |
+| --- | --- |
+| [Visual Studio Build Tools](https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio) | Select **Desktop development with C++**, including the MSVC x64 tools. |
+| [Windows SDK](https://learn.microsoft.com/en-us/windows/apps/windows-sdk/) | Install through the Build Tools installer or separately. |
+| [OpenSSL 3.x](https://github.com/openssl/openssl) | Provide the headers and x64 static `libcrypto` libraries built with `/MT`. |
 
----
+The OpenSSL directory must contain `include/openssl/` and `lib/VC/x64/MT/libcrypto_static.lib`. A runtime-only OpenSSL package is not sufficient. To build OpenSSL from source, see its [Windows build instructions](https://github.com/openssl/openssl/blob/master/NOTES-WINDOWS.md); that process also uses [Strawberry Perl](https://strawberryperl.com/) and [NASM](https://www.nasm.us/).
 
-## Configuration
+Gradle is included through the wrapper. Git is optional when downloading the source as ZIP files. Players installing the release JARs do not need these build tools.
 
-ModSeeker generates the following files on first run:
+The default native compiler is MSVC. Optional obfuscated builds require a Windows OLLVM-enabled `clang-cl.exe`, supplied through `-ClangCl`. It must support the obfuscation options in Hidder's native build script; standard LLVM `clang-cl` alone does not provide those passes.
 
-| File | Purpose |
-|------|---------|
-| `config.yml` | Main configuration — timeouts, kick messages, display settings, Discord webhook |
-| `modblacklist.json` | List of banned mod IDs |
-| `whitelist.json` | Players who skip verification entirely |
-| `client-list.yml` | Per-launcher whitelist for Layer 2 — enable/disable individual launchers |
+For an OLLVM 16 reference implementation, see [source and build instructions](https://github.com/wwh1004/ollvm-16) or its [compiler downloads](https://github.com/wwh1004/ollvm-16/releases). Obtain or build the compiler separately; it is not bundled with these repositories.
 
-### config.yml
+Place the repositories next to each other as `ModSeeker/` and `Hidder/`, then run this from the folder containing both:
 
-```yaml
-# ---------------------------------------------------------------
-# Timeout Configuration
-# ---------------------------------------------------------------
-handshakeTimeoutSeconds: 10
-modlistTimeoutSeconds: 15
-
-# ---------------------------------------------------------------
-# Mod List Filter
-# Base mods hidden from console output (still checked)
-# ---------------------------------------------------------------
-modlistFilter:
-  - "java"
-  - "minecraft"
-  - "fabricloader"
-
-# ---------------------------------------------------------------
-# Kick Messages
-# Supports {mods}, {plural}, {maxMods} placeholders
-# ---------------------------------------------------------------
-kickMessages:
-  missingHidder: "Please Install Hidder Mod To Enter The Server"
-  blacklistedMods: "Please Remove {mods} Illegal Mod{plural} To Join The Server"
-  modlistTimeout: "Player Verification Failed"
-  modlistRequestFailed: "Player verification failed - unable to send mod list request."
-  modCountExceeded: "You have too many mods installed. Maximum allowed: {maxMods}"
-
-# ---------------------------------------------------------------
-# Player Notification
-# ---------------------------------------------------------------
-enablePlayerNotifications: true
-welcomeMessage: "Welcome To The Server"
-
-# ---------------------------------------------------------------
-# Mod Count Threshold
-# ---------------------------------------------------------------
-enableModCountThreshold: false
-maxModCount: 50
-
-# ---------------------------------------------------------------
-# Mod List Display Settings
-# ---------------------------------------------------------------
-showModList: true
-oneModPerLine: false
-highlightMods: true
-highlightBlacklistedMods: true
-
-# ---------------------------------------------------------------
-# Floodgate / Bedrock Player Handling
-# ---------------------------------------------------------------
-allowFloodgate: true
-
-# ==================================================================
-# Discord Webhook Integration
-# ==================================================================
-discord:
-  enabled: false
-  webhookUrl: "https://discord.com/api/webhooks/YOUR_WEBHOOK_URL_HERE"
-  events:
-    playerJoin: true          # Notify when a player joins
-    modListReceived: true     # Notify with the player's mod list
-    blacklistViolation: true  # Notify when a banned mod is detected
-    verificationFailed: true  # Notify when verification fails
-
-# ---------------------------------------------------------------
-# Mod Verification (Layer 3)
-# Set to false to disable mod checking while keeping Layer 1-2 active
-# ---------------------------------------------------------------
-ModVerification: true
-
-# ==================================================================
-# Launcher/Client Verification (Layer 2)
-# ==================================================================
-launcherVerification:
-  enabled: false
-  kickMessage: "Please use an approved launcher to join this server"
-  allowUnknownClients: false
+```powershell
+.\ModSeeker\Tools\StartCustomBuild.ps1
 ```
 
-### modblacklist.json
+On its first run, the tool creates the keys Hidder uses to sign client reports. It builds both projects, checks that ModSeeker recognizes Hidder's key, and saves the JARs in `dist/custom-pair/`. Later builds reuse those keys. The source defaults to Minecraft 26.3 / Java 25.
 
-```json
-{
-  "blacklist": ["exampleCheatMod", "anotherBannedMod"]
-}
+To initialize the keys without building:
+
+```powershell
+.\ModSeeker\Tools\StartCustomBuild.ps1 -InitializeKeysOnly
 ```
 
-### whitelist.json
+Keep a secure backup of `Hidder/native/client_keys.generated.inc` so future builds can use the same keys. This file contains private key material and must not be published. Each ModSeeker server generates its own separate encryption keys on first startup.
 
-```json
-["trustedPlayerName"]
-```
+If a dependency is not found automatically, pass its location with `-JdkDirectory`, `-OpenSslDirectory`, `-VcTools` or `-WindowsSdk`. Use the two generated JARs together.
 
-### client-list.yml
+</details>
 
-Controls which launchers are allowed to connect when Layer 2 (launcher verification) is enabled. Each launcher can be individually toggled.
+## Licence
 
-```yaml
-# Launcher/Client Whitelist
-# enabled: true = allowed, enabled: false = blocked
+Original ModSeeker code is licensed under [AGPL-3.0-or-later](LICENSE).
 
-prism:
-  enabled: false
-  name: "Prism Launcher"
-multimc:
-  enabled: false
-  name: "MultiMC"
-atlauncher:
-  enabled: false
-  name: "ATLauncher"
-curseforge:
-  enabled: false
-  name: "CurseForge"
-modrinth:
-  enabled: false
-  name: "Modrinth App"
-gdlauncher:
-  enabled: false
-  name: "GDLauncher"
-technic:
-  enabled: false
-  name: "Technic Launcher"
-ftb:
-  enabled: false
-  name: "FTB App"
-lunar:
-  enabled: false
-  name: "Lunar Client"
-badlion:
-  enabled: false
-  name: "Badlion Client"
-feather:
-  enabled: false
-  name: "Feather Client"
-labymod:
-  enabled: false
-  name: "LabyMod"
-tlauncher:
-  enabled: false
-  name: "TLauncher"
-sklauncher:
-  enabled: false
-  name: "SKLauncher"
-pojav:
-  enabled: false
-  name: "Pojav Launcher"
-```
+### Third-party licences
 
-To allow a launcher, set its `enabled` to `true`. Players using a blocked or unrecognized launcher are kicked with the message configured in `config.yml` under `launcherVerification.kickMessage`.
-
----
-
-## Discord Webhook
-
-ModSeeker can send real-time notifications to a Discord channel via webhooks.
-
-**Setup:**
-1. In your Discord server, go to **Channel Settings → Integrations → Webhooks**
-2. Create a new webhook and copy the URL
-3. Paste the URL into `config.yml` under `discord.webhookUrl`
-4. Set `discord.enabled` to `true`
-5. Toggle individual event types under `discord.events`
-
-**Supported Events:**
-
-| Event | Trigger |
-|-------|---------|
-| `playerJoin` | Player joins and begins verification |
-| `modListReceived` | Player's mod list is successfully received and logged |
-| `blacklistViolation` | A banned mod is detected — includes the mod name(s) |
-| `verificationFailed` | Verification times out or fails for any reason |
-
-All webhook requests run asynchronously on a dedicated thread to avoid impacting server performance.
-
----
-
-## Commands
-
-All commands require the `modseeker.use` permission.
-
-| Command | Description |
-|---------|-------------|
-| `/modseeker seek mod <player>` | Request and display a player's mod list |
-| `/modseeker status` | Show plugin status, config summary, and verification statistics |
-| `/modseeker modblacklist add <modID>` | Add a mod to the blacklist |
-| `/modseeker modblacklist remove <modID>` | Remove a mod from the blacklist |
-| `/modseeker modblacklist show` | Display all blacklisted mods |
-| `/modseeker whitelist add <player>` | Add a player to the whitelist |
-| `/modseeker whitelist remove <player>` | Remove a player from the whitelist |
-| `/modseeker whitelist show` | Display all whitelisted players |
-| `/modseeker reload` | Reload all configuration files |
-
----
-
-## How It Works
-
-When a player joins the server:
-
-1. **Whitelist check** — Whitelisted players are admitted immediately
-2. **Floodgate check** — Bedrock players are optionally admitted
-3. **Presence detection** — Server waits for the Hidder mod to announce itself (5s timeout)
-4. **Layer 1** — Server sends a cryptographic challenge; client must respond with a valid signature
-5. **Layer 2** — Server verifies the detected launcher against the launcher whitelist
-6. **Player freeze** — Player is frozen in place while Layer 3 runs
-7. **Layer 3** — Server requests the encrypted mod list; verifies integrity signature and session binding
-8. **Blacklist check** — Mod list is compared against `modblacklist.json`
-9. **Mod count check** — If enabled, verifies the mod count is within the threshold
-10. **Approval** — Player is unfrozen and admitted with an optional welcome message
-
-If any step fails, the player is kicked with the appropriate configurable message.
-
----
-
-## Building from Source
-
-### Prerequisites
-
-- JDK 21+ (JDK 25+ for Minecraft 26.1)
-- Gradle (wrapper included)
-
-### Steps
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/RAFIN-G/ModSeeker
-   ```
-
-2. **Key Generation (Required)** 🔑
-
-   Both ModSeeker and [Hidder](https://github.com/RAFIN-G/Hidder) share cryptographic keys. Before building either project, you must generate a fresh set of keys using the tool included in the [`Tools/`](https://github.com/RAFIN-G/ModSeeker/tree/main/Tools) folder.
-
-   ```bash
-   cd Tools
-   javac KeyGen.java
-   java KeyGen
-   ```
-
-   This generates **5 files**. Each file contains the exact line to find and replace — just open it and follow the instructions inside.
-
-   **3 files go into this repo (ModSeeker):**
-
-   | Generated File | Destination File | Variable to Find |
-   |----------------|------------------|------------------|
-   | `SERVER_KEY_JAVA.txt` | [`src/.../SecurityManager.java`](https://github.com/RAFIN-G/ModSeeker/blob/main/src/main/java/com/example/modseeker/SecurityManager.java) | `SERVER_PRIVATE_KEY = "REPLACE_WITH..."` |
-   | `SERVER_VERIFY_KEY.txt` | [`src/.../SecurityManager.java`](https://github.com/RAFIN-G/ModSeeker/blob/main/src/main/java/com/example/modseeker/SecurityManager.java) | `DEFAULT_PUBLIC_KEY = "REPLACE_WITH..."` |
-   | `HMAC_SECRET_JAVA.txt` | [`src/.../HandshakeManager.java`](https://github.com/RAFIN-G/ModSeeker/blob/main/src/main/java/com/example/modseeker/HandshakeManager.java) **AND** [`src/.../SecurityManager.java`](https://github.com/RAFIN-G/ModSeeker/blob/main/src/main/java/com/example/modseeker/SecurityManager.java) | `HMAC_SECRET = "REPLACE_WITH..."` (in **both** files — must be identical) |
-
-   **2 files go into the [Hidder](https://github.com/RAFIN-G/Hidder) repo:**
-
-   | Generated File | Destination File | Section to Find |
-   |----------------|------------------|-----------------|
-   | `CLIENT_KEYS_CPP.txt` | [`Hidder/native/hidder_vault.cpp`](https://github.com/RAFIN-G/Hidder/blob/main/native/hidder_vault.cpp) | The `RSA KEY COMPONENTS` section — replace all `B64_MODULUS`, `B64_PRIV_EXP`, `SRV_B64_MODULUS`, etc. |
-   | `HMAC_SECRET_CPP.txt` | [`Hidder/native/hidder_vault.cpp`](https://github.com/RAFIN-G/Hidder/blob/main/native/hidder_vault.cpp) | The `ENCODED_HMAC_KEY[]` array inside the `computeHmac` function |
-
-   > **Important:** Every deployment should use its own unique keys. Never reuse keys from another server. The HMAC secret must be **identical** across `HandshakeManager.java`, `SecurityManager.java`, and `hidder_vault.cpp` — all three files use it for Layer 1 and Layer 3 verification.
-
-3. Build:
-   ```bash
-   ./gradlew jar      # Linux/macOS
-   gradlew.bat jar    # Windows
-   ```
-
-The compiled JAR will be in `build/libs/`.
-
----
-
-## License
-
-This project is licensed under **AGPL-3.0**. See the [LICENSE](https://github.com/RAFIN-G/ModSeeker/blob/main/LICENSE) file for details.
-
+- The browser panel's **VT323** font is distributed under the [SIL Open Font License 1.1](src/main/resources/gui/OFL.txt).
+- The **Gradle Wrapper** is distributed under [Apache-2.0](LICENSES/Apache-2.0.txt). Dependency licences remain with their respective projects.

@@ -1,20 +1,32 @@
-/*
- * Copyright (C) 2025 ModSeeker
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Affero General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Affero General Public License for more details.
- *
- * You should have received a copy of the GNU Affero General Public License
- * along with this program.  If not, see <https://www.gnu.org/licenses/>.
- */
+// SPDX-FileCopyrightText: 2025 ModSeeker
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 package com.example.modseeker;
+
+import com.example.modseeker.catalog.BucketService;
+import com.example.modseeker.catalog.GuiModIdCache;
+import com.example.modseeker.catalog.HashFetcher;
+import com.example.modseeker.catalog.ModCacheManager;
+import com.example.modseeker.catalog.ModrinthJarResolver;
+import com.example.modseeker.command.CommandHandler;
+import com.example.modseeker.config.ConfigManager;
+import com.example.modseeker.gui.GuiServer;
+import com.example.modseeker.logging.UtilityHelper;
+import com.example.modseeker.policy.BlacklistManager;
+import com.example.modseeker.policy.FloodgateDetector;
+import com.example.modseeker.policy.LauncherListManager;
+import com.example.modseeker.policy.LauncherVerifier;
+import com.example.modseeker.policy.ModAllowlistManager;
+import com.example.modseeker.policy.WhitelistManager;
+import com.example.modseeker.protocol.MessageHandler;
+import com.example.modseeker.protocol.ProtocolConstants;
+import com.example.modseeker.protocol.VerifiedModPayload;
+import com.example.modseeker.verification.HandshakeManager;
+import com.example.modseeker.verification.PlayerDataManager;
+import com.example.modseeker.verification.SecurityManager;
+import com.example.modseeker.verification.ServerKeyStore;
+import com.example.modseeker.verification.VerificationService;
+import com.example.modseeker.webhook.DiscordWebhook;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -23,82 +35,107 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.plugin.messaging.PluginMessageListener;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
 import org.bukkit.ChatColor;
 
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 
-public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor {
+public class ModSeekerPlugin extends JavaPlugin implements Listener {
 
-    private static final int MAX_RETRIES = 3;
-
+    private static final String LIFECYCLE_SEPARATOR = "=".repeat(108);
     private int TIMEOUT_SECONDS = 15;
     private int HANDSHAKE_TIMEOUT_SECONDS = 10;
 
-    private final Map<UUID, PlayerDataManager.PlayerModCheckData> seekRequests = new ConcurrentHashMap<>();
-
     private PlayerDataManager playerDataManager;
     private MessageHandler messageHandler;
-    private ModListParser modListParser;
     private ConfigManager configManager;
     private BlacklistManager blacklistManager;
+    private ModAllowlistManager allowlistManager;
+    private ModCacheManager modCache;
     private WhitelistManager whitelistManager;
     private CommandHandler commandHandler;
     private HandshakeManager handshakeManager;
     private VerificationService verificationService;
     private SecurityManager securityManager;
+    private ServerKeyStore serverKeyStore;
     private DiscordWebhook discordWebhook;
     private LauncherListManager launcherListManager;
-
-    // Simple logging prefix
-    private final String logPrefix = "[ModSeeker] ";
+    private HashFetcher hashFetcher;
+    private GuiModIdCache guiModIdCache;
+    private ModrinthJarResolver modrinthJarResolver;
+    private GuiServer guiServer;
+    private BucketService bucketService;
+    private FloodgateDetector floodgateDetector;
+    private File storageFolder;
 
     @Override
     public void onEnable() {
+        long startupStartedAt = System.nanoTime();
         if (!getDataFolder().exists()) {
             getDataFolder().mkdirs();
         }
+        if (!ensureStorageDirectory()) {
+            failStartup("ModSeeker cannot start because its data directory is unavailable");
+            return;
+        }
 
         playerDataManager = new PlayerDataManager();
-        configManager = new ConfigManager(getDataFolder());
-        blacklistManager = new BlacklistManager(getDataFolder());
-        whitelistManager = new WhitelistManager(getDataFolder());
+        configManager = new ConfigManager(getDataFolder(), this::logInfo);
+        blacklistManager = new BlacklistManager(storageFolder);
+        allowlistManager = new ModAllowlistManager(this);
+        modCache = new ModCacheManager(this);
+        whitelistManager = new WhitelistManager(this);
+        if (whitelistManager.isLoadFailed()) {
+            logInfo(ChatColor.YELLOW + "whitelist.json could not be loaded; whitelist bypass is fail-closed");
+        }
+        bucketService = new BucketService(this);
+        if (!bucketService.ensureDirectory()) {
+            logInfo(ChatColor.YELLOW + "Could not create the bucket directory");
+        }
 
-        loadConfig();
+        applyConfig();
 
-        logInfo("🚀 ModSeeker " + ProtocolConstants.PLUGIN_VERSION + " enabled");
 
-        logInfo("⏱️ Timeouts → Handshake: " + HANDSHAKE_TIMEOUT_SECONDS + "s | Modlist: " + TIMEOUT_SECONDS + "s");
-
-        // Initialize message handler
         messageHandler = new MessageHandler(this);
 
-        // Initialize mod list parser
-        modListParser = new ModListParser();
 
-        // Initialize services
-        securityManager = new SecurityManager(this);
-        securityManager.setConfigManager(configManager);
+        serverKeyStore = new ServerKeyStore(this);
+        if (!serverKeyStore.isReady()) {
+            failStartup("ModSeeker cannot start because the server key pair is invalid");
+            return;
+        }
+        try {
+            securityManager = new SecurityManager(this, serverKeyStore);
+        } catch (IllegalStateException e) {
+            failStartup("ModSeeker cannot start: " + e.getMessage());
+            return;
+        }
         discordWebhook = new DiscordWebhook(configManager);
+        hashFetcher = new HashFetcher();
+        guiModIdCache = new GuiModIdCache(this);
+        modrinthJarResolver = new ModrinthJarResolver(this, guiModIdCache);
+        guiServer = new GuiServer(this);
         launcherListManager = new LauncherListManager(getDataFolder());
+        floodgateDetector = FloodgateDetector.create(this);
+        if (configManager.isAllowFloodgate()) {
+            floodgateDetector.warnIfUnavailable();
+        }
         LauncherVerifier launcherVerifier = new LauncherVerifier(this, launcherListManager, configManager);
-        verificationService = new VerificationService(this, playerDataManager, messageHandler, modListParser,
+        verificationService = new VerificationService(this, playerDataManager, messageHandler,
                 configManager, blacklistManager, securityManager);
-        handshakeManager = new HandshakeManager(this, playerDataManager, messageHandler, modListParser, configManager,
+        handshakeManager = new HandshakeManager(this, playerDataManager, messageHandler, configManager,
                 verificationService, launcherVerifier, securityManager);
-        // Initialize command handler
+
         commandHandler = new CommandHandler(this, blacklistManager, configManager, whitelistManager, launcherListManager);
 
         getServer().getPluginManager().registerEvents(this, this);
@@ -108,57 +145,137 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
             logInfo("⚠️ Paper-specific features disabled (running on Spigot?)");
             logInfo("   ↳ Core freeze events will still work via manual registration");
         }
-        logInfo("📂 Blacklist loaded | ✅ Event listeners active");
 
-        // Register plugin messaging channel
         getServer().getMessenger().registerIncomingPluginChannel(this, ProtocolConstants.PLUGIN_CHANNEL,
                 (channel, player, message) -> messageHandler.onPluginMessageReceived(channel, player, message));
         getServer().getMessenger().registerOutgoingPluginChannel(this, ProtocolConstants.PLUGIN_CHANNEL);
-        logInfo("🔌 Messaging → Outgoing: 1 | Incoming: 1");
-        logInfo("   ↳ " + ProtocolConstants.PLUGIN_CHANNEL);
 
-        // Register commands
+
         this.getCommand("modseeker").setExecutor(commandHandler);
         this.getCommand("modseeker").setTabCompleter(commandHandler);
 
-        logInfo("✅ Initialization complete — ModSeeker is ready!");
-        logInfo("===== MODSEEKER " + ProtocolConstants.PLUGIN_VERSION + " READY =====");
+        logStartupSummary(startupStartedAt);
+
+        populateEssentialsAsync();
+    }
+
+    private void failStartup(String reason) {
+        getLogger().severe(reason + "; stopping Paper to prevent unverified joins");
+        getServer().getPluginManager().disablePlugin(this);
+        getServer().shutdown();
+    }
+
+    private void logStartupSummary(long startedAt) {
+        String verificationMode = configManager.isModVerificationEnabled()
+                ? value(configManager.isAdvancedModVerificationEnabled() ? "hash" : "modid")
+                : state(false);
+        String launcher = state(configManager.isLauncherVerificationEnabled());
+        String floodgate = state(configManager.isAllowFloodgate() && floodgateDetector.isAvailable());
+        int allowlistSize = allowlistManager.size();
+        int blacklistSize = blacklistManager.getBlacklistedMods().size();
+        int whitelistSize = whitelistManager.getEntries().size();
+        String whitelistLabel = whitelistSize == 1 ? "player" : "players";
+        long elapsedMillis = (System.nanoTime() - startedAt) / 1_000_000L;
+
+        String tag = bold(ChatColor.AQUA, "[startup]");
+        logInfo(styled(ChatColor.DARK_GRAY, LIFECYCLE_SEPARATOR));
+        logInfo(tag + label(" Starting ModSeeker ") + value(ProtocolConstants.PLUGIN_VERSION));
+        logInfo(tag + label(" Verification: ") + verificationMode + separator(" | ")
+                + label("launcher: ") + launcher + separator(" | ") + label("Floodgate bypass: ") + floodgate);
+        logInfo(tag + label(" Lists: allowlist: ") + value(allowlistSize + " hashes") + separator(" | ")
+                + label("blacklist: ") + value(blacklistSize + " ids") + separator(" | ")
+                + label("whitelist: ") + value(whitelistSize + " " + whitelistLabel));
+        logInfo(tag + label(" Channel: ") + value(ProtocolConstants.PLUGIN_CHANNEL) + separator(" | ")
+                + label("handshake: ") + value(HANDSHAKE_TIMEOUT_SECONDS + "s") + separator(" | ")
+                + label("modlist: ") + value(TIMEOUT_SECONDS + "s") + separator(" | ")
+                + label("retries: ") + value(MessageHandler.MAX_RETRIES));
+        if (configManager.isDiscordEnabled() && !discordWebhook.isActive()) {
+            logInfo(bold(ChatColor.YELLOW, "[startup] Discord is enabled but the webhook URL is not a valid HTTPS"
+                    + " Discord webhook; notifications are disabled"));
+        }
+        logInfo(bold(ChatColor.GREEN, "[startup] Ready in " + elapsedMillis + " ms"));
+        logInfo(styled(ChatColor.DARK_GRAY, LIFECYCLE_SEPARATOR));
+    }
+
+    private static String state(boolean enabled) {
+        return bold(enabled ? ChatColor.GREEN : ChatColor.GRAY, enabled ? "enabled" : "disabled");
+    }
+
+    private static String label(String text) {
+        return styled(ChatColor.GRAY, text);
+    }
+
+    private static String separator(String text) {
+        return styled(ChatColor.DARK_GRAY, text);
+    }
+
+    private static String value(Object value) {
+        return bold(ChatColor.WHITE, String.valueOf(value));
+    }
+
+    private static String bold(ChatColor color, String text) {
+        return color.toString() + ChatColor.BOLD + text + ChatColor.RESET;
+    }
+
+    private static String styled(ChatColor color, String text) {
+        return color.toString() + text + ChatColor.RESET;
     }
 
     @Override
     public void onDisable() {
-        logInfo("🛑 ModSeeker " + ProtocolConstants.PLUGIN_VERSION + " disabled");
+        long shutdownStartedAt = System.nanoTime();
+        String tag = bold(ChatColor.GOLD, "[shutdown]");
+        logInfo(styled(ChatColor.DARK_GRAY, LIFECYCLE_SEPARATOR));
+        logInfo(tag + label(" Stopping ModSeeker ") + value(ProtocolConstants.PLUGIN_VERSION));
 
-        // Clean up any ongoing tasks
-        for (PlayerDataManager.PlayerModCheckData checkData : playerDataManager.getPlayerModChecks().values()) {
-            if (checkData.timeoutTaskId != -1) {
-                Bukkit.getScheduler().cancelTask(checkData.timeoutTaskId);
-            }
+        int cancelledChecks = cancelPlayerChecks();
+        boolean guiWasRunning = guiServer != null && guiServer.isRunning();
+        if (guiServer != null) {
+            guiServer.stop();
         }
-
-        // Clean up handshake timeout tasks
-        for (PlayerDataManager.HandshakeData handshakeData : playerDataManager.getPlayerHandshakes().values()) {
-            if (handshakeData.timeoutTaskId != -1) {
-                Bukkit.getScheduler().cancelTask(handshakeData.timeoutTaskId);
-            }
-            if (handshakeData.presenceTimeoutTaskId != -1) {
-                Bukkit.getScheduler().cancelTask(handshakeData.presenceTimeoutTaskId);
-            }
-        }
-
-        // Clean up seek request timeout tasks
-        for (PlayerDataManager.PlayerModCheckData seekData : seekRequests.values()) {
-            if (seekData.timeoutTaskId != -1) {
-                Bukkit.getScheduler().cancelTask(seekData.timeoutTaskId);
-            }
-        }
-
-        // Shutdown Discord webhook executor
+        boolean webhookWasActive = discordWebhook != null && discordWebhook.isActive();
         if (discordWebhook != null) {
             discordWebhook.shutdown();
         }
-        logInfo("🧹 Cleanup complete — all sessions cleared");
-        logInfo("✅ Plugin messaging channels closed");
+
+        String guiStatus = shutdownState(guiWasRunning);
+        String webhookStatus = shutdownState(webhookWasActive);
+        long elapsedMillis = (System.nanoTime() - shutdownStartedAt) / 1_000_000L;
+        logInfo(tag + label(" Player checks: ") + value(cancelledChecks + " cancelled") + separator(" | ")
+                + label("GUI: ") + guiStatus + separator(" | ") + label("webhook: ") + webhookStatus);
+        logInfo(bold(ChatColor.GREEN, "[shutdown] Complete in " + elapsedMillis + " ms"));
+        logInfo(styled(ChatColor.DARK_GRAY, LIFECYCLE_SEPARATOR));
+    }
+
+    private static String shutdownState(boolean wasActive) {
+        return bold(wasActive ? ChatColor.GREEN : ChatColor.GRAY, wasActive ? "stopped" : "inactive");
+    }
+
+    private int cancelPlayerChecks() {
+        if (playerDataManager == null) {
+            return 0;
+        }
+        Set<UUID> cancelled = new HashSet<>();
+        for (PlayerDataManager.PlayerModCheckData checkData : playerDataManager.getPlayerModChecks().values()) {
+            if (checkData.timeoutTaskId != -1) {
+                Bukkit.getScheduler().cancelTask(checkData.timeoutTaskId);
+                checkData.timeoutTaskId = -1;
+                cancelled.add(checkData.playerId);
+            }
+        }
+        for (PlayerDataManager.HandshakeData handshakeData : playerDataManager.getPlayerHandshakes().values()) {
+            if (handshakeData.timeoutTaskId != -1) {
+                Bukkit.getScheduler().cancelTask(handshakeData.timeoutTaskId);
+                handshakeData.timeoutTaskId = -1;
+                cancelled.add(handshakeData.playerId);
+            }
+            if (handshakeData.presenceTimeoutTaskId != -1) {
+                Bukkit.getScheduler().cancelTask(handshakeData.presenceTimeoutTaskId);
+                handshakeData.presenceTimeoutTaskId = -1;
+                cancelled.add(handshakeData.playerId);
+            }
+        }
+        return cancelled.size();
     }
 
     @EventHandler
@@ -166,56 +283,27 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         Player player = event.getPlayer();
         UUID playerId = player.getUniqueId();
         String playerName = player.getName();
+        playerDataManager.beginSession(playerId);
 
-        // Note: ModVerification toggle only gates Layer 3 (modlist check).
-        // Layer 1-2 are gated by launcherVerification toggle.
-        // Both checks happen downstream, not here.
 
-        // Check if player is whitelisted
+
+
+
+
         if (whitelistManager.isWhitelisted(playerId)) {
-            // Log whitelist scenario
-            String playerIP = player.getAddress() != null ? player.getAddress().getAddress().getHostAddress()
-                    : "unknown";
-            logInfo("🌍 Player Join: " + playerName + " (UUID: " + playerId.toString() + ", IP: " + playerIP + ")");
-            logInfo("🛡️ " + playerName + " is whitelisted");
-            logInfo("✅ " + playerName + " bypassed all verifications — access granted");
-
-            // Add to approved players
-            playerDataManager.addApprovedPlayer(playerId);
-
-            // Send welcome message if enabled
-            if (configManager.isEnablePlayerNotifications()) {
-                player.sendMessage(ChatColor.GREEN + configManager.getWelcomeMessage());
-            }
-            return; // Skip all verification for whitelisted players
+            grantBypass(player, PlayerDataManager.BypassReason.WHITELIST);
+            return;
         }
 
-        // Check for Floodgate / Bedrock players if enabled
-        if (configManager.isAllowFloodgate()) {
-            // Floodgate UUIDs typically have 0 as the most significant bits
-            // This is a zero-dependency check for Floodgate players
-            if (player.getUniqueId().getMostSignificantBits() == 0) {
-                String playerIP = player.getAddress() != null ? player.getAddress().getAddress().getHostAddress()
-                        : "unknown";
-                logInfo("🌊 Floodgate Player Detected: " + playerName + " (UUID: " + playerId.toString() + ", IP: "
-                        + playerIP + ")");
-                logInfo("✅ " + playerName + " bypassed checks (Bedrock/Floodgate)");
-
-                // Add to approved players
-                playerDataManager.addApprovedPlayer(playerId);
-
-                // Send welcome message if enabled
-                if (configManager.isEnablePlayerNotifications()) {
-                    player.sendMessage(ChatColor.GREEN + configManager.getWelcomeMessage());
-                }
-                return;
-            }
+        if (configManager.isAllowFloodgate() && floodgateDetector.isFloodgatePlayer(playerId)) {
+            grantBypass(player, PlayerDataManager.BypassReason.FLOODGATE);
+            return;
         }
 
-        // Freeze player during verification (v2.0 security)
+
         securityManager.freezePlayer(playerId);
 
-        // Start handshake process
+
         handshakeManager.startHandshake(player);
     }
 
@@ -225,7 +313,7 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         UUID playerId = player.getUniqueId();
         String playerName = player.getName();
 
-        // Get session info before removing data
+
         PlayerDataManager.HandshakeData handshakeData = playerDataManager.getPlayerHandshakes().get(playerId);
         String sessionId = "unknown";
         String sessionTime = "0s";
@@ -233,69 +321,161 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         if (handshakeData != null) {
             sessionId = handshakeData.handshakeId;
             long sessionDuration = System.currentTimeMillis() - handshakeData.startTime;
-            // Convert to seconds
+
             sessionTime = (sessionDuration / 1000) + "s";
         }
 
-        // Log player quit with session info
+
         logInfo("🚪 Player Quit: " + playerName + " (Session: " + sessionTime + ")");
         logInfo("🧹 Session cleaned up [ID: " + sessionId + "]");
 
-        // Clean up data via managers
+
         handshakeManager.cleanupHandshakeData(playerId);
         verificationService.cleanupVerificationData(playerId);
 
-        // Clean up seek request data
-        PlayerDataManager.PlayerModCheckData seekData = seekRequests.remove(playerId);
-        if (seekData != null && seekData.timeoutTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(seekData.timeoutTaskId);
-        }
 
-        // Unfreeze player on quit (v2.0 security cleanup)
         securityManager.unfreezePlayer(playerId);
+        playerDataManager.clearBypass(playerId);
     }
 
-    // Method to handle announce presence message - Delegated to HandshakeManager
+    private void grantBypass(Player player, PlayerDataManager.BypassReason reason) {
+        grantBypass(player, reason, true);
+    }
+
+    private void grantBypass(Player player, PlayerDataManager.BypassReason reason, boolean logJoin) {
+        UUID playerId = player.getUniqueId();
+        String playerIP = player.getAddress() != null ? player.getAddress().getAddress().getHostAddress() : "unknown";
+        playerDataManager.setBypassReason(playerId, reason);
+        playerDataManager.addApprovedPlayer(playerId);
+        securityManager.unfreezePlayer(playerId);
+        if (logJoin) {
+            logInfo("Player Join: " + player.getName() + " (UUID: " + playerId + ", IP: " + playerIP + ")");
+        }
+        logInfo(player.getName() + " bypassed verification via " + reason.name().toLowerCase(Locale.ROOT));
+        if (configManager.isEnablePlayerNotifications()) {
+            player.sendMessage(ChatColor.GREEN + configManager.getWelcomeMessage());
+        }
+    }
+
+
     public void handleAnnouncePresence(Player player, String messageJson) {
         handshakeManager.handleAnnouncePresence(player, messageJson);
     }
 
-    // Method to handle mod list response - Delegated to VerificationService
-    public void handleModListResponse(Player player, String messageJson) {
-        UUID playerId = player.getUniqueId();
+    public void handleVerifiedModPayload(Player player, VerifiedModPayload payload) {
+        verificationService.handleVerifiedPayload(player, payload);
+    }
 
-        // First check if this is a seek request
-        PlayerDataManager.PlayerModCheckData seekCheckData = seekRequests.get(playerId);
-        if (seekCheckData != null) {
-            // This is a seek request, handle it separately
-            verificationService.handleSeekModListResponse(player, messageJson, seekCheckData);
-            // Remove the seek request data after handling
-            seekRequests.remove(playerId);
-            return;
+
+    public void reloadConfiguration() {
+        configManager.loadConfig();
+        applyConfig();
+    }
+
+    private void applyConfig() {
+        if (!configManager.isVerificationConfigured()) {
+            logInfo(ChatColor.RED + "ModVerification and launcherVerification are both disabled;"
+                    + " non-bypassed players will be denied until a verification check is enabled");
         }
 
-        // Otherwise, this is a regular verification request
-        verificationService.handleModListResponse(player, messageJson);
-    }
-
-    // Method to load configuration
-    private void loadConfig() {
-        configManager.loadConfig();
-
-        // Update local values from config manager
         TIMEOUT_SECONDS = configManager.getTIMEOUT_SECONDS();
         HANDSHAKE_TIMEOUT_SECONDS = configManager.getHANDSHAKE_TIMEOUT_SECONDS();
-
-        // Update whitelist in player data manager
-        playerDataManager.setWhitelist(configManager.getWhitelist());
     }
 
-    // Simple logging method
+    public void activateWhitelistBypass(UUID playerId) {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player == null || !player.isOnline() || !whitelistManager.isWhitelisted(playerId)) {
+            return;
+        }
+        if (playerDataManager.isVerificationBypassed(playerId)) {
+            return;
+        }
+        boolean alreadyApproved = playerDataManager.isPlayerApproved(playerId);
+        handshakeManager.cleanupHandshakeData(playerId);
+        verificationService.cleanupVerificationData(playerId);
+        if (alreadyApproved) {
+            playerDataManager.setBypassReason(playerId, PlayerDataManager.BypassReason.WHITELIST);
+            playerDataManager.addApprovedPlayer(playerId);
+            securityManager.unfreezePlayer(playerId);
+            return;
+        }
+        grantBypass(player, PlayerDataManager.BypassReason.WHITELIST, false);
+    }
+
+    public void synchronizeWhitelistBypasses() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (whitelistManager.isWhitelisted(player.getUniqueId())) {
+                activateWhitelistBypass(player.getUniqueId());
+            }
+        }
+    }
+
+    public void populateEssentialsAsync() {
+        if (!configManager.isAdvancedModVerificationEnabled()) {
+            return;
+        }
+        String minecraftVersion = getServer().getMinecraftVersion();
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+            final HashFetcher.EssentialFetchResult fetched = hashFetcher.fetchEssentials(minecraftVersion);
+            getServer().getScheduler().runTask(this, () -> {
+                if (!fetched.ok()) {
+                    logInfo(ChatColor.YELLOW + "Could not refresh essential mod hashes for Minecraft "
+                            + minecraftVersion + ": " + fetched.error());
+                    return;
+                }
+                ModAllowlistManager.BatchResult result = allowlistManager.replaceEssentialEntries(
+                        HashFetcher.essentialModIds(), fetched.entries());
+                if (!result.success()) {
+                    logInfo(ChatColor.YELLOW + "Could not update essential mod hashes for Minecraft "
+                            + minecraftVersion + ": " + result.error());
+                } else if (result.changed() > 0) {
+                    logInfo(ChatColor.YELLOW + "Synchronized " + fetched.entries().size()
+                            + " essential mod hashes for Minecraft " + minecraftVersion);
+                }
+            });
+        });
+    }
+
+    public boolean ensureStorageDirectory() {
+        storageFolder = new File(getDataFolder(), "data");
+        try {
+            Files.createDirectories(storageFolder.toPath());
+            for (String name : List.of("modallowlist.json", "modblacklist.json", "seek_cache.json",
+                    "whitelist.json", "gui_modid_cache.json")) {
+                migrateDataFile(name);
+            }
+            return true;
+        } catch (IOException e) {
+            logInfo(ChatColor.YELLOW + "Could not prepare the ModSeeker data directory: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private void migrateDataFile(String name) throws IOException {
+        Path source = getDataFolder().toPath().resolve(name);
+        Path target = storageFolder.toPath().resolve(name);
+        if (!Files.exists(source)) {
+            return;
+        }
+        if (Files.exists(target)) {
+            logInfo(ChatColor.YELLOW + "Legacy " + name + " remains in the plugin root because data/" + name
+                    + " already exists");
+            return;
+        }
+        try {
+            Files.move(source, target, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(source, target);
+        }
+        logInfo(ChatColor.YELLOW + "Moved " + name + " to data/" + name);
+    }
+
+
     public void logInfo(String message) {
         UtilityHelper.logInfo(message);
     }
 
-    // Getters for modular access
+
     public PlayerDataManager getPlayerDataManager() {
         return playerDataManager;
     }
@@ -304,16 +484,44 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         return messageHandler;
     }
 
-    public ModListParser getModListParser() {
-        return modListParser;
-    }
-
     public ConfigManager getConfigManager() {
         return configManager;
     }
 
     public BlacklistManager getBlacklistManager() {
         return blacklistManager;
+    }
+
+    public ModAllowlistManager getAllowlistManager() {
+        return allowlistManager;
+    }
+
+    public ModCacheManager getModCache() {
+        return modCache;
+    }
+
+    public HashFetcher getHashFetcher() {
+        return hashFetcher;
+    }
+
+    public GuiModIdCache getGuiModIdCache() {
+        return guiModIdCache;
+    }
+
+    public ModrinthJarResolver getModrinthJarResolver() {
+        return modrinthJarResolver;
+    }
+
+    public GuiServer getGuiServer() {
+        return guiServer;
+    }
+
+    public BucketService getBucketService() {
+        return bucketService;
+    }
+
+    public File getStorageFolder() {
+        return storageFolder != null ? storageFolder : new File(getDataFolder(), "data");
     }
 
     public WhitelistManager getWhitelistManager() {
@@ -332,8 +540,12 @@ public class ModSeekerPlugin extends JavaPlugin implements Listener, TabExecutor
         return securityManager;
     }
 
-    public Map<UUID, PlayerDataManager.PlayerModCheckData> getSeekRequests() {
-        return seekRequests;
+    public ServerKeyStore getServerKeyStore() {
+        return serverKeyStore;
+    }
+
+    public FloodgateDetector getFloodgateDetector() {
+        return floodgateDetector;
     }
 
     public DiscordWebhook getDiscordWebhook() {

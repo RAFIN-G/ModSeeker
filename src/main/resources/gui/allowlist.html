@@ -1,0 +1,44 @@
+<!doctype html>
+<!--
+SPDX-FileCopyrightText: 2026 ModSeeker
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ModSeeker Mod Allowlist</title>
+  <link rel="stylesheet" href="/assets/style.css">
+  <script src="/assets/app.js" defer></script>
+</head>
+<body data-mode="allowlist">
+  <header class="topbar">
+    <div class="brand"><img src="/assets/logo" alt="" class="logo"><span>ModSeeker</span></div>
+    <a class="credit" href="https://modrinth.com/plugin/modseeker" target="_blank" rel="noopener noreferrer">ModSeeker by RAFIN-G</a>
+  </header>
+  <main>
+    <section class="section search-section">
+      <div class="section-heading">
+        <h1>Add allowed mods</h1>
+        <span id="connection" class="status">Connecting</span>
+      </div>
+      <div class="searchbar">
+        <input id="query" type="search" maxlength="80" autocomplete="off" placeholder="Mod name" aria-label="Mod name">
+        <input id="mc-version" class="version-field" type="text" maxlength="32" placeholder="Version" aria-label="Minecraft version">
+      </div>
+      <div id="search-state" class="message" hidden></div>
+      <div id="search-results" class="results"></div>
+    </section>
+    <section class="section current-section">
+      <div class="section-heading">
+        <h2>Allowed mods</h2>
+        <div class="heading-actions"><span id="count" class="count"></span><button id="refresh" class="button secondary" type="button">Refresh</button></div>
+      </div>
+      <div id="current-state" class="message">Loading allowlist</div>
+      <div id="current-list" class="results"></div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
