@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">ModSeeker — Your server, your policy.</title>
+  <desc id="desc">Your server, your policy. A Paper plugin for mod and launcher checks.</desc>
+  <rect width="1200" height="320" rx="20" fill="#101C2C"/>
+  <path d="M0 20A20 20 0 0 1 20 0H220V320H20A20 20 0 0 1 0 300Z" fill="#007F86"/>
+  <g transform="translate(42 89) scale(1.38)" fill="#FFFFFF">
+    <path fill-rule="evenodd" d="M28 8H60L80 28V60L60 80H28L8 60V28Z M32 17H56L71 32V56L56 71H32L17 56V32Z"/>
+    <path d="M65 72L72 65L94 87L87 94Z"/>
+    <path d="M28 29H60V37H28Z M28 42H52V50H28Z M28 55H60V63H28Z"/>
+  </g>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="270" y="82" fill="#7EDADD" font-size="16" font-weight="700" letter-spacing="3">PAPER</text>
+    <text x="266" y="160" fill="#FFFFFF" font-size="68" font-weight="700" letter-spacing="-2">ModSeeker</text>
+    <text x="270" y="207" fill="#CBD5E1" font-size="25">Your server, your policy.</text>
+    <path d="M270 244H1124" stroke="#2C3C50"/>
+    <text x="270" y="279" fill="#A9BACD" font-size="16">MOD DETECTION</text>
+    <circle cx="444" cy="273" r="3" fill="#007F86"/>
+    <text x="464" y="279" fill="#A9BACD" font-size="16">CLIENT &amp; LAUNCHER POLICY</text>
+    <circle cx="739" cy="273" r="3" fill="#5746D9"/>
+    <text x="759" y="279" fill="#A9BACD" font-size="16">BROWSER PANEL</text>
+  </g>
+</svg>
